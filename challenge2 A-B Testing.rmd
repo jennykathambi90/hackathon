@@ -34,7 +34,7 @@ library(ggplot2)
 library(plotly)
 library(DataExplorer)
 library(naniar)
-#library(powerMediation)#power analysis
+library(powerMediation)#power analysis
 
 #library(pwr)
 library(broom)
@@ -169,42 +169,53 @@ difference in proportions
 
 # Observed difference in proportions
 ```{r}
-#observed_diff_in_prop<-fertilizer_sample_data%>%
- # group_by(variation_code)%>%
- # tally()%>%summarise(diff(n))%>%pull()
+observed_diff_in_prop<-fertilizer_sample_data%>%
+  group_by(variation_code)%>%
+  tally()%>%summarise(diff(n))%>%pull()
 
 #observed_diff_in_prop
 
 #p_hat <- fertilizer_sample_data %>% 
-#  specify(response = variation_code, success = "THUMB") %>% 
-#  calculate(stat = "prop")
+ # specify(response = variation_code, success = "THUMB") %>% 
+ # calculate(stat = "prop")
 #p_hat
 ```
+
 ```{r}
 diff_prop_data<-fertilizer_sample_data%>%
-  summarize(diff_in_prop=p_hat%>%pull)
+  summarize(diff_in_prop=observed_diff_in_prop)
 
 diff_prop_data
 ```
 
 ## Simulated Data/ Bootstrap Distribution under Null Hypothesis
+```{r}
+fertilizer_sample_data$constant<-1:nrow(fertilizer_sample_data)
+```
+
 
 ```{r}
-set.seed(seed)
+#set.seed(seed)
 
-boot_dist_prop <-fertilizer_sample_data%>%
-  specify(response=variation_code, success='THUMB')%>%
-    hypothesize(null = 'point', p = 0.5697151) %>% 
-  generate(reps = 1000)%>%
-  calculate(stat = 'prop', na.rm = TRUE)
+#boot_dist_prop <-fertilizer_sample_data%>%
+ # specify(constant~variation_code, success='THUMB')%>%
+ #   hypothesize(null = 'independence') %>% 
+ # generate(reps = 10)%>%
+ # calculate(stat = 'prop', na.rm = TRUE, order = c('THUMB','NARRATIVE'))
 ```
+```{r}
+##### test if sample is consistent with known population
+#binom.test(x=fertilizer_sample_data$variation_code, p=0.513, alternative="greater")
+```
+
+
 
 ```{r}
 #view
-glimpse(boot_dist_prop)
+#glimpse(boot_dist_prop)
 ```
 
 ```{r}
-unique(boot_dist_prop$stat)
+#unique(boot_dist_prop$stat)
 ```
 

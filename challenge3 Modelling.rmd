@@ -1,0 +1,126 @@
+---
+title: "Arifu Hackathon: Challenge3 Modelling
+author: "Jane Kathambi"
+date: "4 May 2019"
+output: 
+  html_document:
+    keep_md: yes
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 4
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+# Introduction
+
+
+# Load the required libraries
+```{r message=FALSE}
+library(gmodels)
+library(tidyverse)
+library(caret)
+library(caTools)
+library(gridExtra)
+library(readr)
+library(lubridate)
+library(stringr)
+library(DT)
+
+seed=2010
+```
+
+# Load the data
+```{r message=FALSE}
+credit_data<-read_csv('data/credit data.csv')
+```
+
+# IDA
+
+## Introduce the data
+```{r}
+introduce(credit_data)
+```
+
+## Plot the data introduction
+```{r}
+plot_intro(credit_data)
+```
+
+## Look at the columns that have missing values
+```{r}
+miss_var_summary(credit_data)
+```
+
+## Plot the missing data
+```{r}
+plot_missing(credit_data)
+```
+
+
+## Look at the internal structure
+```{r}
+glimpse(credit_data)
+```
+
+## Drop zero var variables
+```{r}
+# Obtain zero and near zero variance variables
+NZV<- nearZeroVar(credit_data, saveMetrics = TRUE)
+
+# view
+NZV
+
+# set row names into a column, name it variable_name
+NZV<-NZV%>%
+  tibble::rownames_to_column(var = 'variable_name')
+
+# confirm
+NZV
+```
+
+
+```{r}
+# Extract the names of zero variance features
+variables_to_drop<-NZV%>%
+  filter(zeroVar== TRUE )%>%
+  select(variable_name)%>%
+  pull()
+
+variables_to_drop
+```
+
+There are npo zero var variables
+
+
+## Distribution of categorical variables
+```{r}
+plot_bar(credit_data)
+```
+
+## Distribution of numerical variables
+```{r}
+plot_histogram(credit_data%>%select(-observation_id)
+               )
+```
+
+## Response variable coding
+```{r}
+CrossTable(credit_data$default)
+```
+
+The imbalance in the classes is noted for modeling as more information is available to classify the paid_in_full class, which may allow some models to result in good accuracy when predicting the paid_in_full class, but poor accuracy when predicting the default class while having good overall accuracy. For this reason I will use the AUC metric for model evaluation.
+
+Let us coarse response variable to factor:
+```{r}
+credit_data$default<-ifelse(credit_data$default==2, 'default','paid_in_full' )
+
+credit_data$default<-as.factor(credit_data$default)
+```
+
+```{r}
+# Call CrossTable() on loan_status_360
+prop.table(table(credit_data$default))
+```
+
