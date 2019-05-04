@@ -1,0 +1,210 @@
+---
+title: "Arifu Hackathon: Challenge2 A/B Testing"
+author: "Jane Kathambi"
+date: "4 May 2019"
+output: 
+  html_document:
+    keep_md: yes
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 4
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+# Introduction
+In 2017 Arifu designed an experiment to test whether learners preferred *narrative* or *fact based* training. 
+
+A fertilizer training was designed with 2 variations *'THUMB'* for fact based and *'NARRATIVE'* for narrative based. 
+
+Your task is to analyze between the two variations which was more popular. 
+
+NB: Make the assumption the length of the training does not matter.
+
+In addition feel free to generate any interesting insights from the dataset. Your output will be a write up and code used. Both the findings and an explanation of your method should be provided 
+ 
+
+# Load the required libraries
+```{r message=FALSE}
+library(infer)
+library(readr) #to load csv data.
+library(dplyr) #data manipulation
+library(ggplot2)
+library(plotly)
+library(DataExplorer)
+library(naniar)
+#library(powerMediation)#power analysis
+
+#library(pwr)
+library(broom)
+library(DT)
+
+seed=2010
+```
+
+# Load the data
+```{r message=FALSE}
+fertilizer_data<-read_csv('data/challenge 2 dataset (fertilizer).csv')
+```
+
+# IDA
+
+Introduce the data
+```{r}
+introduce(fertilizer_data)
+```
+
+Plot the data introduction
+```{r}
+plot_intro(fertilizer_data)
+```
+
+Look at the columns that have missing values
+```{r}
+miss_var_summary(fertilizer_data)
+```
+
+Plot the missing data
+```{r}
+plot_missing(fertilizer_data)
+```
+
+The columns that have missing data have less than 5% of their values missing and since we have relatively many observations we may just drop the observations that have these missing values.
+
+```{r}
+# drop rows with missing values
+fertilizer_data<-na.omit(fertilizer_data)
+```
+
+
+Look at the internal structure
+```{r}
+glimpse(fertilizer_data)
+```
+
+# Plot of distribution of variation code
+```{r}
+fertilizer_data%>%
+  ggplot(aes(variation_code))+
+  geom_bar()
+```
+
+From the plot we can see that *'THUMB'* for fact based training is more popular than *'NARRATIVE'* for narrative based training.
+
+But is the variation statistically signinficant? We will have to carry out A/B testing to prove this.
+ 
+#  Research Question
+
+In 2017 Arifu designed an experiment to test whether learners preferred *narrative* or *fact based* training. 
+
+A fertilizer training was designed with 2 variations *'THUMB'* for fact based and *'NARRATIVE'* for narrative based. 
+
+Your task is to analyze between the two variations which was more popular.
+
+# Hypothesis
+
+H0: The difference in proportions of THUMB and NARRATIVE VARIATIONS is zero
+
+HA: The proportion of users who preferred THUMB based training is greater than the proportion of users who preferred NARRATIVE base training.
+
+# Variable of interest
+Variation code
+
+# Power Analysis 
+
+Let us determine the sample size
+```{r}
+fertilizer_data%>%
+  mutate()%>%
+  select(variation_code)%>%table()%>%prop.table()
+```
+
+```{r}
+total_sample_size <- SSizeLogisticBin(
+  
+  p1 = 0.4458438,# conversion rate in August for control group/condition 
+  
+  p2 = 0.5541562, # expected conversion rate in August for test group/condition, assuming a 10 percentage point increase
+  
+  B = 0.5, # proportion of the sample data from the test condition/group (ideally 0.5)
+  
+  alpha = 0.05, # significance level/p-value. The level of probability at which it is agreed that the null hypothesis will be rejected. Conventionally set at 0.05.
+  
+  power = 0.8 # 1-Beta. The probability of rejecting the null hypothesis when it is false and the HA is true.
+
+ )
+
+total_sample_size
+``` 
+
+# Data Sampling
+Now let us select a random sample of 667 trainings.
+```{r}
+#set seed
+set.seed(seed)
+
+#generate 667 random observations 
+fertilizer_sample_data <- fertilizer_data%>% 
+  select(variation_code)%>%
+  sample_n(667) 
+
+#view
+glimpse(fertilizer_sample_data)
+```
+
+# Distribution
+We can now observe the distributions of our two training categories. 
+```{r}
+ggplotly(
+ggplot(data = fertilizer_sample_data, aes(x = variation_code)) +
+  geom_bar())
+```
+
+There seems to be a higher preference for THUMB trainings.
+
+# Test statistic
+
+difference in proportions
+
+# Observed difference in proportions
+```{r}
+#observed_diff_in_prop<-fertilizer_sample_data%>%
+ # group_by(variation_code)%>%
+ # tally()%>%summarise(diff(n))%>%pull()
+
+#observed_diff_in_prop
+
+#p_hat <- fertilizer_sample_data %>% 
+#  specify(response = variation_code, success = "THUMB") %>% 
+#  calculate(stat = "prop")
+#p_hat
+```
+```{r}
+diff_prop_data<-fertilizer_sample_data%>%
+  summarize(diff_in_prop=p_hat%>%pull)
+
+diff_prop_data
+```
+
+## Simulated Data/ Bootstrap Distribution under Null Hypothesis
+
+```{r}
+set.seed(seed)
+
+boot_dist_prop <-fertilizer_sample_data%>%
+  specify(response=variation_code, success='THUMB')%>%
+    hypothesize(null = 'point', p = 0.5697151) %>% 
+  generate(reps = 1000)%>%
+  calculate(stat = 'prop', na.rm = TRUE)
+```
+
+```{r}
+#view
+glimpse(boot_dist_prop)
+```
+
+```{r}
+unique(boot_dist_prop$stat)
+```
+
